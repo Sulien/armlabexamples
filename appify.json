@@ -40,9 +40,7 @@
          "publicSubnetName": "pub-subnet",
          "publicSubnet": "192.168.0.0/26",
          "privateSubnet": "192.168.0.64/26",
-         "privateSubnetName": "pri-subnet",
-         "managementSubnet": "192.168.0.128/26",
-         "managementSubnetName": "mgt-subnet"
+         "privateSubnetName": "pri-subnet"
       },
       "availabilitySetName": "myAvSet",
       "trafficManagerDNSName": "[toLower(concat('appify', UniqueString(resourceGroup().id)))]",
@@ -276,12 +274,6 @@
                ]
             },
             "subnets": [
-               {
-                  "name": "[variables('networks').managementSubnetName]",
-                  "properties": {
-                     "addressPrefix": "[variables('networks').managementSubnet]"
-                  }
-               },
                {
                   "name": "[variables('networks').privateSubnetName]",
                   "properties": {

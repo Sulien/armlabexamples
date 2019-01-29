@@ -1,0 +1,472 @@
+{
+   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+   "contentVersion": "1.0.0.0",
+   "parameters": {
+      "adminUsername": {
+         "type": "string",
+         "defaultValue": "appifyadmin",
+         "metadata": {
+            "description": "Username for the Virtual Machine."
+         }
+      },
+      "adminPassword": {
+         "type": "securestring",
+         "metadata": {
+            "description": "Password for the Virtual Machine."
+         }
+      },
+      "windowsOSVersion": {
+         "type": "string",
+         "defaultValue": "2016-Datacenter",
+         "allowedValues": [
+            "2008-R2-SP1",
+            "2012-Datacenter",
+            "2012-R2-Datacenter",
+            "2016-Nano-Server",
+            "2016-Datacenter-with-Containers",
+            "2016-Datacenter"
+         ],
+         "metadata": {
+            "description": "The Windows version for the VM. This will pick a fully patched image of this given Windows version."
+         }
+      }
+   },
+   "variables": {
+      "ModulesUrl": "https://github.com/vicperdana/armlabexamples/raw/master/appDSC.zip",
+      "ConfigurationFunction": "ConfigureWebServer.ps1\\Main",
+      "networks": {
+         "addressPrefix": "192.168.0.0/24",
+         "virtualNetworkName": "appify-vnet",
+         "publicSubnetName": "pub-subnet",
+         "publicSubnet": "192.168.0.0/26",
+         "privateSubnet": "192.168.0.64/26",
+         "privateSubnetName": "pri-subnet"
+      },
+      "availabilitySetName": "myAvSet",
+      "trafficManagerDNSName": "[toLower(concat('appify', UniqueString(resourceGroup().id)))]",
+      "compute": {
+         "web": {
+            "count": 2,
+            "size": "Standard_DS1_v2",
+            "name": "appifyweb",
+            "publicIpName": "webPubIp",
+            "secGroup": {
+               "name": "sg-AllowWebHttpsFromAG",
+               "rule1": {
+                  "name": "inbound-apprules",
+                  "properties": {
+                     "description": "Allow HTTPS from Traffic Manager",
+                     "protocol": "Tcp",
+                     "sourcePortRange": "*",
+                     "destinationPortRange": "443",
+                     "sourceAddressPrefix": "AzureLoadBalancer",
+                     "destinationAddressPrefix": "*",
+                     "access": "Allow",
+                     "priority": 1001,
+                     "direction": "Inbound"
+                  }
+               }
+            }
+         }
+      },
+      "diagStorageAccountType": "Standard_LRS",
+      "diagStorageAccountName": "[concat('diag',uniquestring(resourceGroup().id))]",
+      "privateSubnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('networks').virtualNetworkName, variables('networks').privateSubnetName)]",
+      "appGwNsgName": "AppGwNSG",
+      "webdeployPkg": "https://github.com/vicperdana/armlabexamples/raw/master/AppifyApp.zip",
+      "applicationGatewayDNSName": "[toLower(concat('ag', UniqueString(resourceGroup().id)))]",
+      "applicationGatewaySize": "Standard_Small",
+      "applicationGatewayTier": "Standard",
+      "applicationGatewayCapacity": "1",
+      "applicationGatewayName": "appifyag",
+      "appGwPublicIpName": "ApplicationGatewayPublicIp",
+      "appGatewaySubnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('networks').virtualNetworkName, variables('networks').publicSubnetName)]",
+      "appGwPublicIPRef": "[resourceId('Microsoft.Network/publicIPAddresses',variables('appGwPublicIpName'))]",
+      "applicationGatewayID": "[resourceId('Microsoft.Network/applicationGateways',variables('applicationGatewayName'))]",
+      "storageaccountType": "StandardSSD_LRS",
+      "appDSCUpdateTagVersion": "1.6",
+      "_artifactsLocation": "https://raw.githubusercontent.com/vicperdana/armlabexamples/master",
+      "scriptFolder": ".",
+      "scriptFileName": "InstallDSC.ps1"
+   },
+   "resources": [
+      {
+         "apiVersion": "2017-06-01",
+         "name": "[variables('applicationGatewayName')]",
+         "type": "Microsoft.Network/applicationGateways",
+         "location": "[resourceGroup().location]",
+         "dependsOn": [
+            "[resourceId('Microsoft.Network/publicIPAddresses/', variables('appGwPublicIpName'))]",
+            "[concat('Microsoft.Compute/virtualMachines/', variables('compute').web.name,'-01')]",
+            "[concat('Microsoft.Compute/virtualMachines/', variables('compute').web.name,'-02')]"
+         ],
+         "properties": {
+            "sku": {
+               "name": "[variables('applicationGatewaySize')]",
+               "tier": "[variables('applicationGatewayTier')]",
+               "capacity": "[variables('applicationGatewayCapacity')]"
+            },
+            "gatewayIPConfigurations": [
+               {
+                  "name": "appGatewayIpConfig",
+                  "properties": {
+                     "subnet": {
+                        "id": "[variables('appGatewaySubnetRef')]"
+                     }
+                  }
+               }
+            ],
+            "frontendIPConfigurations": [
+               {
+                  "name": "appGatewayFrontendIP",
+                  "properties": {
+                     "PublicIPAddress": {
+                        "id": "[variables('appGwPublicIPRef')]"
+                     }
+                  }
+               }
+            ],
+            "frontendPorts": [
+               {
+                  "name": "appGatewayFrontendPort80",
+                  "properties": {
+                     "Port": 80
+                  }
+               }
+            ],
+            "backendAddressPools": [
+               {
+                  "name": "appGatewayBackendPool",
+                  "properties": {
+                     "BackendAddresses": [
+                        {
+                           "IpAddress": "[reference(concat('Microsoft.Network/networkInterfaces/', variables('compute').web.name,'-01-nic')).ipconfigurations[0].properties.privateIPAddress]"
+                        },
+                        {
+                           "IpAddress": "[reference(concat('Microsoft.Network/networkInterfaces/', variables('compute').web.name,'-02-nic')).ipconfigurations[0].properties.privateIPAddress]"
+                        }
+                     ]
+                  }
+               }
+            ],
+            "backendHttpSettingsCollection": [
+               {
+                  "name": "appGatewayBackendHttpSettings",
+                  "properties": {
+                     "Port": 80,
+                     "Protocol": "Http",
+                     "CookieBasedAffinity": "Disabled"
+                  }
+               }
+            ],
+            "httpListeners": [
+               {
+                  "name": "appGatewayHttpListener",
+                  "properties": {
+                     "FrontendIPConfiguration": {
+                        "Id": "[concat(variables('applicationGatewayID'), '/frontendIPConfigurations/appGatewayFrontendIP')]"
+                     },
+                     "FrontendPort": {
+                        "Id": "[concat(variables('applicationGatewayID'), '/frontendPorts/appGatewayFrontendPort80')]"
+                     },
+                     "Protocol": "Http",
+                     "SslCertificate": null
+                  }
+               }
+            ],
+            "requestRoutingRules": [
+               {
+                  "Name": "HTTPRule",
+                  "properties": {
+                     "RuleType": "Basic",
+                     "httpListener": {
+                        "id": "[concat(variables('applicationGatewayID'), '/httpListeners/appGatewayHttpListener')]"
+                     },
+                     "backendAddressPool": {
+                        "id": "[concat(variables('applicationGatewayID'), '/backendAddressPools/appGatewayBackendPool')]"
+                     },
+                     "backendHttpSettings": {
+                        "id": "[concat(variables('applicationGatewayID'), '/backendHttpSettingsCollection/appGatewayBackendHttpSettings')]"
+                     }
+                  }
+               }
+            ]
+         }
+      },
+      {
+         "apiVersion": "2017-03-01",
+         "type": "Microsoft.Network/publicIPAddresses",
+         "name": "[variables('appGwPublicIpName')]",
+         "location": "[resourceGroup().location]",
+         "properties": {
+            "publicIPAllocationMethod": "Dynamic",
+            "dnsSettings": {
+               "domainNameLabel": "[variables('applicationGatewayDNSName')]"
+            }
+         }
+      },
+      {
+         "name": "appifytm1",
+         "type": "Microsoft.Network/trafficManagerProfiles",
+         "apiVersion": "2017-05-01",
+         "tags": {},
+         "location": "global",
+         "dependsOn": [
+            "[concat('Microsoft.Network/publicIPAddresses/', variables('appGwPublicIpName'))]"
+         ],
+         "properties": {
+            "profileStatus": "Enabled",
+            "trafficRoutingMethod": "Weighted",
+            "dnsConfig": {
+               "relativeName": "[variables('trafficManagerDNSName')]",
+               "ttl": 30
+            },
+            "monitorConfig": {
+               "protocol": "HTTP",
+               "port": 80,
+               "path": "/",
+               "intervalInSeconds": 30,
+               "timeoutInSeconds": 5,
+               "toleratedNumberOfFailures": 3
+            },
+            "endpoints": [
+               {
+                  "name": "endpoint1",
+                  "type": "Microsoft.Network/trafficManagerProfiles/azureEndpoints",
+                  "properties": {
+                     "targetResourceId": "[resourceId('Microsoft.Network/publicIPAddresses',concat(variables('appGwPublicIpName')))]",
+                     "endpointStatus": "Enabled",
+                     "weight": 1
+                  }
+               }
+            ]
+         }
+      },
+      {
+         "type": "Microsoft.Compute/availabilitySets",
+         "name": "[variables('availabilitySetName')]",
+         "apiVersion": "2016-04-30-preview",
+         "location": "[resourceGroup().location]",
+         "properties": {
+            "platformFaultDomainCount": 2,
+            "platformUpdateDomainCount": 2,
+            "managed": true
+         }
+      },
+      {
+          "type": "Microsoft.Storage/storageAccounts",
+          "apiVersion": "2018-07-01",
+          "name": "[variables('diagStorageAccountName')]",
+          "location": "[resourceGroup().location]",
+          "sku":{
+             "name" :"[variables('diagStorageAccountType')]"
+          }
+      },
+      {
+         "apiVersion": "2016-03-30",
+         "type": "Microsoft.Network/virtualNetworks",
+         "name": "[variables('networks').virtualNetworkName]",
+         "location": "[resourceGroup().location]",
+         "properties": {
+            "addressSpace": {
+               "addressPrefixes": [
+                  "[variables('networks').addressPrefix]"
+               ]
+            },
+            "subnets": [
+               {
+                  "name": "[variables('networks').privateSubnetName]",
+                  "properties": {
+                     "addressPrefix": "[variables('networks').privateSubnet]"
+                  }
+               },
+               {
+                  "name": "[variables('networks').publicSubnetName]",
+                  "properties": {
+                     "addressPrefix": "[variables('networks').publicSubnet]"
+                  }
+               }
+            ]
+         }
+      },
+      {
+         "apiVersion": "2017-06-01",
+         "type": "Microsoft.Network/networkSecurityGroups",
+         "name": "[variables('compute').web.secGroup.name]",
+         "location": "[resourceGroup().location]",
+         "properties": {
+            "securityRules": [
+               {
+                  "name": "[variables('compute').web.secGroup.rule1.name]",
+                  "properties": {
+                     "description": "[variables('compute').web.secGroup.rule1.properties.description]",
+                     "protocol": "[variables('compute').web.secGroup.rule1.properties.protocol]",
+                     "sourcePortRange": "[variables('compute').web.secGroup.rule1.properties.sourcePortRange]",
+                     "destinationPortRange": "[variables('compute').web.secGroup.rule1.properties.destinationPortRange]",
+                     "sourceAddressPrefix": "[variables('compute').web.secGroup.rule1.properties.sourceAddressPrefix]",
+                     "destinationAddressPrefix": "[variables('compute').web.secGroup.rule1.properties.destinationAddressPrefix]",
+                     "access": "[variables('compute').web.secGroup.rule1.properties.access]",
+                     "priority": "[variables('compute').web.secGroup.rule1.properties.priority]",
+                     "direction": "[variables('compute').web.secGroup.rule1.properties.direction]"
+                  }
+               }
+            ]
+         }
+      },
+      {
+         "apiVersion": "2017-06-01",
+         "type": "Microsoft.Network/networkInterfaces",
+         "name": "[concat(variables('compute').web.name, '-0', copyIndex(1),'-nic')]",
+         "location": "[resourceGroup().location]",
+         "copy": {
+            "name": "nicCopy",
+            "count": "[variables('compute').web.count]"
+         },
+         "dependsOn": [
+            "[resourceId('Microsoft.Network/virtualNetworks/', variables('networks').virtualNetworkName)]",
+            "[resourceId('Microsoft.Network/networkSecurityGroups', variables('compute').web.secGroup.name)]"
+         ],
+         "properties": {
+            "ipConfigurations": [
+               {
+                  "name": "ipconfig1",
+                  "properties": {
+                     "privateIPAllocationMethod": "Dynamic",
+                     "subnet": {
+                        "id": "[variables('privateSubnetRef')]"
+                     }
+                  }
+               }
+            ],
+            "networkSecurityGroup": {
+               "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('compute').web.secGroup.name)]"
+            }
+         }
+      },
+      {
+         "apiVersion": "2018-04-01",
+         "type": "Microsoft.Compute/virtualMachines",
+         "name": "[concat(variables('compute').web.name,'-0', copyIndex(1))]",
+         "location": "[resourceGroup().location]",
+         "dependsOn": [
+            "[concat('Microsoft.Network/networkInterfaces/', variables('compute').web.name,'-0', copyIndex(1),'-nic')]"
+         ],
+         "copy": {
+            "name": "vmCopy",
+            "count": "[variables('compute').web.count]"
+         },
+         "properties": {
+            "availabilitySet": {
+               "id": "[resourceId('Microsoft.Compute/availabilitySets',variables('availabilitySetName'))]"
+            },
+            "hardwareProfile": {
+               "vmSize": "[variables('compute').web.size]"
+            },
+            "osProfile": {
+               "computerName": "[concat(variables('compute').web.name,'-0', copyIndex(1))]",
+               "adminUsername": "[parameters('adminUsername')]",
+               "adminPassword": "[parameters('adminPassword')]"
+            },
+            "storageProfile": {
+               "imageReference": {
+                  "publisher": "MicrosoftWindowsServer",
+                  "offer": "WindowsServer",
+                  "sku": "[parameters('windowsOSVersion')]",
+                  "version": "latest"
+               },
+               "osDisk": {
+                  "name": "[concat(variables('compute').web.name,'-0', copyIndex(1), '-osdisk')]",
+                  "caching": "ReadWrite",
+                  "createOption": "FromImage",
+                  "managedDisk": {
+                     "storageAccountType": "[variables('storageaccountType')]"
+                  }
+               }
+            },
+            "networkProfile": {
+               "networkInterfaces": [
+                  {
+                     "id": "[concat(resourceId('Microsoft.Network/networkInterfaces', variables('compute').web.name), '-0',copyIndex(1),'-nic')]"
+                  }
+               ]
+            },
+            "diagnosticsProfile": {
+               "bootDiagnostics": {
+                  "enabled": true,
+                  "storageUri": "[reference(resourceId('Microsoft.Storage/storageAccounts/', variables('diagStorageAccountName'))).primaryEndpoints.blob]"
+               }
+            }
+         }
+      },
+      {
+         "type": "Microsoft.Compute/virtualMachines/extensions",
+         "name": "[concat(variables('compute').web.name,'-0',copyIndex(1),'/', 'CS')]",
+         "apiVersion": "2015-06-15",
+         "location": "[resourceGroup().location]",
+         "copy": {
+            "name": "customExtCopy",
+            "count": "[variables('compute').web.count]"
+         },
+         "dependsOn": [
+            "[concat('Microsoft.Compute/virtualMachines/', variables('compute').web.name, '-0', copyIndex(1))]"
+         ],
+         "properties": {
+            "publisher": "Microsoft.Compute",
+            "type": "CustomScriptExtension",
+            "typeHandlerVersion": "1.9",
+            "autoUpgradeMinorVersion": true,
+            "settings": {
+               "fileUris": [
+                  "https://raw.githubusercontent.com/vicperdana/armlabexamples/master/InstallDSC.ps1"
+               ],
+               "timestamp": 123456789               
+            },
+            "protectedSettings": {
+               "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -File ', variables('scriptFolder'), '/', variables('scriptFileName'))]"
+           }
+         }
+      },
+      {
+         "type": "Microsoft.Compute/virtualMachines/extensions",
+         "name": "[concat(variables('compute').web.name,'-0',copyIndex(1),'/', 'IIS')]",
+         "apiVersion": "2018-04-01",
+         "location": "[resourceGroup().location]",
+         "copy": {
+            "name": "extCopy",
+            "count": "[variables('compute').web.count]"
+         },
+         "dependsOn": [
+            "[concat('Microsoft.Compute/virtualMachines/', variables('compute').web.name, '-0', copyIndex(1))]",
+            "[concat('Microsoft.Compute/virtualMachines/', variables('compute').web.name,'-0',copyIndex(1),'/extensions/', 'CS')]"
+         ],
+         "properties": {
+            "publisher": "Microsoft.Powershell",
+            "type": "DSC",
+            "typeHandlerVersion": "2.76",
+            "autoUpgradeMinorVersion": true,
+            "settings": {
+               "configuration": {
+                  "url": "[variables('ModulesUrl')]",
+                  "script": "appDSC.ps1",
+                  "function": "Main"
+               },
+               "configurationArguments": {
+                  "nodeName": "[concat(variables('compute').web.name,'-0', copyIndex(1))]",
+                  "webDeployPackage": "[variables('webdeployPkg')]"
+               }
+            },
+            "protectedSettings": null
+         }
+      }
+   ],
+   "outputs": {
+      "TrafficManagerDNS": {
+         "type": "string",
+         "value": "[reference('appifytm1').dnsConfig.fqdn]"
+      },
+      "AppGatewayDNS": {
+         "type": "string",
+         "value": "[reference(variables('appGwPublicIpName')).dnssettings.fqdn]"
+      }
+   }
+}

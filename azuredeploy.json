@@ -83,7 +83,7 @@
       "appGatewaySubnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('networks').virtualNetworkName, variables('networks').publicSubnetName)]",
       "appGwPublicIPRef": "[resourceId('Microsoft.Network/publicIPAddresses',variables('appGwPublicIpName'))]",
       "applicationGatewayID": "[resourceId('Microsoft.Network/applicationGateways',variables('applicationGatewayName'))]",
-      "storageaccountType": "StandardSSD_LRS",
+      "storageaccountType": "Standard_LRS",
       "appDSCUpdateTagVersion": "1.6",
       "_artifactsLocation": "https://raw.githubusercontent.com/vicperdana/armlabexamples/master",
       "scriptFolder": ".",

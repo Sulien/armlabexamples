@@ -429,7 +429,7 @@
       {
          "type": "Microsoft.Compute/virtualMachines/extensions",
          "name": "[concat(variables('compute').web.name,'-0',copyIndex(1),'/', 'IIS')]",
-         "apiVersion": "2015-06-15",
+         "apiVersion": "2018-04-01",
          "location": "[resourceGroup().location]",
          "copy": {
             "name": "extCopy",
@@ -442,9 +442,8 @@
          "properties": {
             "publisher": "Microsoft.Powershell",
             "type": "DSC",
-            "typeHandlerVersion": "2.9",
+            "typeHandlerVersion": "2.76",
             "autoUpgradeMinorVersion": true,
-            "forceUpdateTag": "[variables('appDSCUpdateTagVersion')]",
             "settings": {
                "configuration": {
                   "url": "[variables('ModulesUrl')]",

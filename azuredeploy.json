@@ -46,7 +46,7 @@
       "trafficManagerDNSName": "[toLower(concat('appify', UniqueString(resourceGroup().id)))]",
       "compute": {
          "web": {
-            "count": 2,
+            "count": 1,
             "size": "Standard_DS1_v2",
             "name": "appifyweb",
             "publicIpName": "webPubIp",
@@ -84,8 +84,6 @@
       "appGwPublicIPRef": "[resourceId('Microsoft.Network/publicIPAddresses',variables('appGwPublicIpName'))]",
       "applicationGatewayID": "[resourceId('Microsoft.Network/applicationGateways',variables('applicationGatewayName'))]",
       "storageaccountType": "Standard_LRS",
-      "appDSCUpdateTagVersion": "1.6",
-      "_artifactsLocation": "https://raw.githubusercontent.com/vicperdana/armlabexamples/master",
       "scriptFolder": ".",
       "scriptFileName": "InstallDSC.ps1"
    },

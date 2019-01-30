@@ -95,8 +95,7 @@
          "location": "[resourceGroup().location]",
          "dependsOn": [
             "[resourceId('Microsoft.Network/publicIPAddresses/', variables('appGwPublicIpName'))]",
-            "[concat('Microsoft.Compute/virtualMachines/', variables('compute').web.name,'-01')]",
-            "[concat('Microsoft.Compute/virtualMachines/', variables('compute').web.name,'-02')]"
+            "[concat('Microsoft.Compute/virtualMachines/', variables('compute').web.name,'-01')]"
          ],
          "properties": {
             "sku": {
@@ -139,9 +138,6 @@
                      "BackendAddresses": [
                         {
                            "IpAddress": "[reference(concat('Microsoft.Network/networkInterfaces/', variables('compute').web.name,'-01-nic')).ipconfigurations[0].properties.privateIPAddress]"
-                        },
-                        {
-                           "IpAddress": "[reference(concat('Microsoft.Network/networkInterfaces/', variables('compute').web.name,'-02-nic')).ipconfigurations[0].properties.privateIPAddress]"
                         }
                      ]
                   }

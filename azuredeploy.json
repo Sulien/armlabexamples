@@ -41,6 +41,11 @@
          "privateSubnet": "192.168.0.64/26",
          "privateSubnetName": "pri-subnet"
       },
+      "appifyTags" : {
+         "Department": "IT",
+         "Application": "Appify Web App",
+         "Created By": "Vic Perdana"
+      },
       "availabilitySetName": "myAvSet",
       "trafficManagerDNSName": "[toLower(concat('appify', UniqueString(resourceGroup().id)))]",
       "compute": {
@@ -91,6 +96,7 @@
          "name": "[variables('applicationGatewayName')]",
          "type": "Microsoft.Network/applicationGateways",
          "location": "[resourceGroup().location]",
+         "tags": "[variables('appifyTags')]",
          "dependsOn": [
             "[resourceId('Microsoft.Network/publicIPAddresses/', variables('appGwPublicIpName'))]",
             "[concat('Microsoft.Compute/virtualMachines/', variables('compute').web.name,'-01')]"
@@ -190,6 +196,7 @@
          "type": "Microsoft.Network/publicIPAddresses",
          "name": "[variables('appGwPublicIpName')]",
          "location": "[resourceGroup().location]",
+         "tags": "[variables('appifyTags')]",
          "properties": {
             "publicIPAllocationMethod": "Dynamic",
             "dnsSettings": {
@@ -201,7 +208,7 @@
          "name": "appifytm1",
          "type": "Microsoft.Network/trafficManagerProfiles",
          "apiVersion": "2017-05-01",
-         "tags": {},
+         "tags": "[variables('appifyTags')]",
          "location": "global",
          "dependsOn": [
             "[concat('Microsoft.Network/publicIPAddresses/', variables('appGwPublicIpName'))]"
@@ -223,7 +230,7 @@
             },
             "endpoints": [
                {
-                  "name": "endpoint1",
+                  "name": "eastUSEndPoint",
                   "type": "Microsoft.Network/trafficManagerProfiles/azureEndpoints",
                   "properties": {
                      "targetResourceId": "[resourceId('Microsoft.Network/publicIPAddresses',concat(variables('appGwPublicIpName')))]",
@@ -238,6 +245,7 @@
          "type": "Microsoft.Compute/availabilitySets",
          "name": "[variables('availabilitySetName')]",
          "apiVersion": "2016-04-30-preview",
+         "tags": "[variables('appifyTags')]",
          "location": "[resourceGroup().location]",
          "properties": {
             "platformFaultDomainCount": 2,
@@ -250,6 +258,7 @@
           "apiVersion": "2018-07-01",
           "name": "[variables('diagStorageAccountName')]",
           "location": "[resourceGroup().location]",
+          "tags": "[variables('appifyTags')]",
           "sku":{
              "name" :"[variables('diagStorageAccountType')]"
           }
@@ -259,6 +268,7 @@
          "type": "Microsoft.Network/virtualNetworks",
          "name": "[variables('networks').virtualNetworkName]",
          "location": "[resourceGroup().location]",
+         "tags": "[variables('appifyTags')]",
          "dependsOn": [
             "[resourceId('Microsoft.Network/networkSecurityGroups', variables('compute').web.secGroup.name)]"],
          "properties": {
@@ -291,6 +301,7 @@
          "type": "Microsoft.Network/networkSecurityGroups",
          "name": "[variables('compute').web.secGroup.name]",
          "location": "[resourceGroup().location]",
+         "tags": "[variables('appifyTags')]",
          "properties": {
             "securityRules": [
                {
@@ -315,6 +326,7 @@
          "type": "Microsoft.Network/networkInterfaces",
          "name": "[concat(variables('compute').web.name, '-0', copyIndex(1),'-nic')]",
          "location": "[resourceGroup().location]",
+         "tags": "[variables('appifyTags')]",
          "copy": {
             "name": "nicCopy",
             "count": "[variables('compute').web.count]"
@@ -344,6 +356,7 @@
          "dependsOn": [
             "[concat('Microsoft.Network/networkInterfaces/', variables('compute').web.name,'-0', copyIndex(1),'-nic')]"
          ],
+         "tags": "[variables('appifyTags')]",
          "copy": {
             "name": "vmCopy",
             "count": "[variables('compute').web.count]"
@@ -395,6 +408,7 @@
          "type": "Microsoft.Compute/virtualMachines/extensions",
          "name": "[concat(variables('compute').web.name,'-0',copyIndex(1),'/', 'CS')]",
          "apiVersion": "2015-06-15",
+         "tags": "[variables('appifyTags')]",
          "location": "[resourceGroup().location]",
          "copy": {
             "name": "customExtCopy",
@@ -423,6 +437,7 @@
          "type": "Microsoft.Compute/virtualMachines/extensions",
          "name": "[concat(variables('compute').web.name,'-0',copyIndex(1),'/', 'IIS')]",
          "apiVersion": "2018-04-01",
+         "tags": "[variables('appifyTags')]",
          "location": "[resourceGroup().location]",
          "copy": {
             "name": "extCopy",

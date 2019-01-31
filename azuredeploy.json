@@ -33,7 +33,6 @@
    },
    "variables": {
       "ModulesUrl": "https://github.com/vicperdana/armlabexamples/raw/master/appDSC.zip",
-      "ConfigurationFunction": "ConfigureWebServer.ps1\\Main",
       "networks": {
          "addressPrefix": "192.168.0.0/24",
          "virtualNetworkName": "appify-vnet",
@@ -51,15 +50,15 @@
             "name": "appifyweb",
             "publicIpName": "webPubIp",
             "secGroup": {
-               "name": "sg-AllowWebHttpsFromAG",
+               "name": "sg-AllowWebTrafficOnly",
                "rule1": {
-                  "name": "inbound-apprules",
+                  "name": "AllowWebTrafficOnly",
                   "properties": {
-                     "description": "Allow HTTPS from Traffic Manager",
+                     "description": "Allow HTTP traffic to web servers",
                      "protocol": "Tcp",
                      "sourcePortRange": "*",
-                     "destinationPortRange": "443",
-                     "sourceAddressPrefix": "AzureLoadBalancer",
+                     "destinationPortRange": "80",
+                     "sourceAddressPrefix": "*",
                      "destinationAddressPrefix": "*",
                      "access": "Allow",
                      "priority": 1001,
@@ -72,7 +71,6 @@
       "diagStorageAccountType": "Standard_LRS",
       "diagStorageAccountName": "[concat('diag',uniquestring(resourceGroup().id))]",
       "privateSubnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('networks').virtualNetworkName, variables('networks').privateSubnetName)]",
-      "appGwNsgName": "AppGwNSG",
       "webdeployPkg": "https://github.com/vicperdana/armlabexamples/raw/master/AppifyApp.zip",
       "applicationGatewayDNSName": "[toLower(concat('ag', UniqueString(resourceGroup().id)))]",
       "applicationGatewaySize": "Standard_Small",
@@ -261,6 +259,8 @@
          "type": "Microsoft.Network/virtualNetworks",
          "name": "[variables('networks').virtualNetworkName]",
          "location": "[resourceGroup().location]",
+         "dependsOn": [
+            "[resourceId('Microsoft.Network/networkSecurityGroups', variables('compute').web.secGroup.name)]"],
          "properties": {
             "addressSpace": {
                "addressPrefixes": [
@@ -271,7 +271,10 @@
                {
                   "name": "[variables('networks').privateSubnetName]",
                   "properties": {
-                     "addressPrefix": "[variables('networks').privateSubnet]"
+                     "addressPrefix": "[variables('networks').privateSubnet]",
+                     "networkSecurityGroup": {
+                        "id":"[resourceId('Microsoft.Network/networkSecurityGroups', variables('compute').web.secGroup.name)]"
+                     }
                   }
                },
                {
@@ -317,8 +320,7 @@
             "count": "[variables('compute').web.count]"
          },
          "dependsOn": [
-            "[resourceId('Microsoft.Network/virtualNetworks/', variables('networks').virtualNetworkName)]",
-            "[resourceId('Microsoft.Network/networkSecurityGroups', variables('compute').web.secGroup.name)]"
+            "[resourceId('Microsoft.Network/virtualNetworks/', variables('networks').virtualNetworkName)]"
          ],
          "properties": {
             "ipConfigurations": [
@@ -331,10 +333,7 @@
                      }
                   }
                }
-            ],
-            "networkSecurityGroup": {
-               "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('compute').web.secGroup.name)]"
-            }
+            ]
          }
       },
       {

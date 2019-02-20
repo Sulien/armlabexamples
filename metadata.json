@@ -1,0 +1,9 @@
+{
+    "$schema": "https://aka.ms/azure-quickstart-templates-metadata-schema#",
+    "type": "Application",
+    "itemDisplayName": "Sample template",
+    "description": "This template allows deploying web application on a Windows VM including VNET, Storage, and an Application Gateway.",
+    "summary": "This template allows deploying web application on a Windows VM including VNET, Storage, and an Application Gateway.  Number of servers is modifiable with an automatic set up under the app gateway ",
+    "githubUsername": "vicperdana",
+    "dateUpdated": "2019-02-20"
+  }

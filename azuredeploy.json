@@ -47,7 +47,6 @@
          "Application": "Appify Web App",
          "Created By": "Vic Perdana"
       },
-      "availabilitySetName": "myAvSet",
       "trafficManagerDNSName": "[toLower(concat('appify', UniqueString(resourceGroup().id)))]",
       "compute": {
          "web": {
@@ -243,18 +242,6 @@
          }
       },
       {
-         "type": "Microsoft.Compute/availabilitySets",
-         "name": "[variables('availabilitySetName')]",
-         "apiVersion": "2016-04-30-preview",
-         "tags": "[variables('appifyTags')]",
-         "location": "[resourceGroup().location]",
-         "properties": {
-            "platformFaultDomainCount": 2,
-            "platformUpdateDomainCount": 2,
-            "managed": true
-         }
-      },
-      {
           "type": "Microsoft.Storage/storageAccounts",
           "apiVersion": "2018-07-01",
           "name": "[variables('diagStorageAccountName')]",
@@ -363,9 +350,6 @@
             "count": "[variables('compute').web.count]"
          },
          "properties": {
-            "availabilitySet": {
-               "id": "[resourceId('Microsoft.Compute/availabilitySets',variables('availabilitySetName'))]"
-            },
             "hardwareProfile": {
                "vmSize": "[variables('compute').web.size]"
             },

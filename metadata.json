@@ -3,7 +3,7 @@
     "type": "Application",
     "itemDisplayName": "Sample template",
     "description": "This template allows deploying web application on a Windows VM including VNET, Storage, and an Application Gateway.",
-    "summary": "This template allows deploying web application on a Windows VM including VNET, Storage, and an Application Gateway.  Number of servers is modifiable with an automatic set up under the app gateway ",
+    "summary": "This template allows deploying web application on a Windows VM including VNET, Storage, and an Application Gateway.  Number of servers is modifiable which will be automatically configured as an app gateway's backend pool",
     "githubUsername": "vicperdana",
-    "dateUpdated": "2019-02-20"
+    "dateUpdated": "2019-02-28"
   }

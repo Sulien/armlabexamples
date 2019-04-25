@@ -50,7 +50,7 @@
       "trafficManagerDNSName": "[toLower(concat('appify', UniqueString(resourceGroup().id)))]",
       "compute": {
          "web": {
-            "count": 1,
+            "count": 2,
             "size": "Standard_DS1_v2",
             "name": "appifyweb",
             "publicIpName": "webPubIp",
@@ -142,6 +142,9 @@
                      "BackendAddresses": [
                         {
                            "IpAddress": "[reference(concat('Microsoft.Network/networkInterfaces/', variables('compute').web.name,'-01-nic')).ipconfigurations[0].properties.privateIPAddress]"
+                        },
+                        {
+                           "IpAddress": "[reference(concat('Microsoft.Network/networkInterfaces/', variables('compute').web.name,'-02-nic')).ipconfigurations[0].properties.privateIPAddress]"
                         }
                      ]
                   }

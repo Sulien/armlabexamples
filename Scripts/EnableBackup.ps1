@@ -6,10 +6,10 @@ param (
     [string]$ResourceGroupName = "rg-backup",
 
     [Parameter(Mandatory)]
-    [string]$VMName = "vdperdanadc",
+    [string]$VMName = "appifyweb-01",
 
     [Parameter(Mandatory)]
-    [string]$VMResourceGroupName = "rg-addsdevenv"
+    [string]$VMResourceGroupName = "rg-vmwebapp"
 
 )
 

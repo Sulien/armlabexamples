@@ -6,7 +6,7 @@ param (
     [string]$ResourceGroupName = "rg-backup",
 
     [Parameter(Mandatory)]
-    [string]$VMResourceGroupName = "vdperdanadc",
+    [string]$VMName = "vdperdanadc",
 
     [Parameter(Mandatory)]
     [string]$VMResourceGroupName = "rg-addsdevenv"

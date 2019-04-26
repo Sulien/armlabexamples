@@ -23,4 +23,5 @@ $policy = Get-AzureRmRecoveryServicesBackupProtectionPolicy -name "DailyPolicy"
 Enable-AzureRmRecoveryServicesBackupProtection `
     -ResourceGroupName $VMResourceGroupName `
     -Name $VMName `
-    -Policy $policy
+    -Policy $policy `
+    -ErrorAction SilentlyContinue
